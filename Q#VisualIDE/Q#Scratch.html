@@ -116,57 +116,73 @@ pre{
 const R={
  namespace:{allowIn:["ROOT"],p:{name:"MyProgram"},c:1,
   code:(b,i)=>`${i}namespace ${b.p.name} {\n${b.c.map(x=>g(x,i+"    ")).join("")}${i}}\n`,
-  help:"namespace — создаёт пространство имён Q#.\nПример:\nnamespace MyProgram { ... }"},
+  help:"namespace — создаёт пространство имён Q#."},
+
  open:{allowIn:["namespace"],p:{lib:"Microsoft.Quantum.Intrinsic"},c:0,
   code:(b,i)=>`${i}open ${b.p.lib};\n`,
-  help:"open — подключает библиотеку Q#.\nПример:\nopen Microsoft.Quantum.Intrinsic;"},
- operation:{allowIn:["namespace"],p:{name:"Main",ret:"Unit"},c:1,
-  code:(b,i)=>`${i}operation ${b.p.name}() : ${b.p.ret} {\n${b.c.map(x=>g(x,i+"    ")).join("")}${i}}\n`,
-  help:"operation — операция (функция) с кубитами.\nПример:\noperation Main() : Unit { ... }"},
- function:{allowIn:["namespace"],p:{name:"Func",ret:"Int"},c:1,
-  code:(b,i)=>`${i}function ${b.p.name}() : ${b.p.ret} {\n${b.c.map(x=>g(x,i+"    ")).join("")}${i}}\n`,
-  help:"function — функция с возвратом значения.\nПример:\nfunction Func() : Int { ... }"},
+  help:"open — подключает библиотеку Q#."},
+
+ operation:{allowIn:["namespace"],p:{name:"Main",ret:"Unit",params:[]},c:1,
+  code:(b,i)=>{
+    const params=b.p.params.map(p=>`${p.name} : ${p.type}`).join(", ");
+    return `${i}operation ${b.p.name}(${params}) : ${b.p.ret} {\n${b.c.map(x=>g(x,i+"    ")).join("")}${i}}\n`;
+  },
+  help:"operation — операция (функция) с кубитами.\nМожно добавить параметры: name:type"},
+
+ function:{allowIn:["namespace"],p:{name:"Func",ret:"Int",params:[]},c:1,
+  code:(b,i)=>{
+    const params=b.p.params.map(p=>`${p.name} : ${p.type}`).join(", ");
+    return `${i}function ${b.p.name}(${params}) : ${b.p.ret} {\n${b.c.map(x=>g(x,i+"    ")).join("")}${i}}\n`;
+  },
+  help:"function — функция с возвратом значения.\nМожно добавить параметры: name:type"},
+
  if:{allowIn:["operation","function","if","for","while"],p:{cond:"true"},c:1,
   code:(b,i)=>`${i}if (${b.p.cond}) {\n${b.c.map(x=>g(x,i+"    ")).join("")}${i}}\n`,
-  help:"if — условие.\nПример:\nif (x>0) { ... }"},
+  help:"if — условие."},
+
  for:{allowIn:["operation","function","if","for","while"],p:{v:"i",a:"0",b:"10"},c:1,
   code:(b,i)=>`${i}for (${b.p.v} in ${b.p.a}..${b.p.b}) {\n${b.c.map(x=>g(x,i+"    ")).join("")}${i}}\n`,
-  help:"for — цикл.\nПример:\nfor (i in 0..10) { ... }"},
+  help:"for — цикл."},
+
  while:{allowIn:["operation","function","if","for","while"],p:{cond:"true"},c:1,
   code:(b,i)=>`${i}while (${b.p.cond}) {\n${b.c.map(x=>g(x,i+"    ")).join("")}${i}}\n`,
-  help:"while — цикл с условием.\nПример:\nwhile (cond) { ... }"},
- use:{allowIn:["operation"],p:{q:"q"},c:0,
-  code:(b,i)=>`${i}use ${b.p.q} = Qubit();\n`,
-  help:"use — выделяет кубит.\nПример:\nuse q = Qubit();"},
- let:{allowIn:["operation","function"],p:{n:"x",v:"0"},c:0,
-  code:(b,i)=>`${i}let ${b.p.n} = ${b.p.v};\n`,
-  help:"let — переменная.\nПример:\nlet x = 0;"},
- return:{allowIn:["operation","function"],p:{v:"()"},c:0,
-  code:(b,i)=>`${i}return ${b.p.v};\n`,
-  help:"return — возвращает значение.\nПример:\nreturn ();"},
+  help:"while — цикл с условием."},
+
+ use:{allowIn:["operation"],p:{q:"q"},c:0,code:(b,i)=>`${i}use ${b.p.q} = Qubit();\n`,
+  help:"use — выделяет кубит."},
+
+ let:{allowIn:["operation","function"],p:{n:"x",v:"0"},c:0,code:(b,i)=>`${i}let ${b.p.n} = ${b.p.v};\n`,
+  help:"let — переменная."},
+
+ return:{allowIn:["operation","function"],p:{v:"()"},c:0,code:(b,i)=>`${i}return ${b.p.v};\n`,
+  help:"return — возвращает значение."},
+
  H:{allowIn:["operation","if","for","while"],p:{q:"q"},c:0,code:(b,i)=>`${i}H(${b.p.q});\n`,
-  help:"H — гейт Адамара.\nПример:\nH(q);"},
+  help:"H — гейт Адамара."},
+
  X:{allowIn:["operation","if","for","while"],p:{q:"q"},c:0,code:(b,i)=>`${i}X(${b.p.q});\n`,
-  help:"X — гейт Паули X.\nПример:\nX(q);"},
+  help:"X — гейт Паули X."},
+
  Y:{allowIn:["operation","if","for","while"],p:{q:"q"},c:0,code:(b,i)=>`${i}Y(${b.p.q});\n`,
-  help:"Y — гейт Паули Y.\nПример:\nY(q);"},
+  help:"Y — гейт Паули Y."},
+
  Z:{allowIn:["operation","if","for","while"],p:{q:"q"},c:0,code:(b,i)=>`${i}Z(${b.p.q});\n`,
-  help:"Z — гейт Паули Z.\nПример:\nZ(q);"},
- Rx:{allowIn:["operation","if","for","while"],p:{a:"PI()/2",q:"q"},c:0,
-  code:(b,i)=>`${i}Rx(${b.p.a}, ${b.p.q});\n`,
-  help:"Rx — вращение вокруг X.\nПример:\nRx(PI()/2, q);"},
- Ry:{allowIn:["operation","if","for","while"],p:{a:"PI()/2",q:"q"},c:0,
-  code:(b,i)=>`${i}Ry(${b.p.a}, ${b.p.q});\n`,
-  help:"Ry — вращение вокруг Y.\nПример:\nRy(PI()/2, q);"},
- Rz:{allowIn:["operation","if","for","while"],p:{a:"PI()/2",q:"q"},c:0,
-  code:(b,i)=>`${i}Rz(${b.p.a}, ${b.p.q});\n`,
-  help:"Rz — вращение вокруг Z.\nПример:\nRz(PI()/2, q);"},
- CNOT:{allowIn:["operation","if","for","while"],p:{c:"c",t:"t"},c:0,
-  code:(b,i)=>`${i}CNOT(${b.p.c}, ${b.p.t});\n`,
-  help:"CNOT — контролируемый X.\nПример:\nCNOT(c,t);"},
- measure:{allowIn:["operation","if","for","while"],p:{q:"q"},c:0,
-  code:(b,i)=>`${i}let m = M(${b.p.q});\n`,
-  help:"measure — измерение кубита.\nПример:\nlet m = M(q);"}
+  help:"Z — гейт Паули Z."},
+
+ Rx:{allowIn:["operation","if","for","while"],p:{a:"PI()/2",q:"q"},c:0,code:(b,i)=>`${i}Rx(${b.p.a}, ${b.p.q});\n`,
+  help:"Rx — вращение вокруг X."},
+
+ Ry:{allowIn:["operation","if","for","while"],p:{a:"PI()/2",q:"q"},c:0,code:(b,i)=>`${i}Ry(${b.p.a}, ${b.p.q});\n`,
+  help:"Ry — вращение вокруг Y."},
+
+ Rz:{allowIn:["operation","if","for","while"],p:{a:"PI()/2",q:"q"},c:0,code:(b,i)=>`${i}Rz(${b.p.a}, ${b.p.q});\n`,
+  help:"Rz — вращение вокруг Z."},
+
+ CNOT:{allowIn:["operation","if","for","while"],p:{c:"c",t:"t"},c:0,code:(b,i)=>`${i}CNOT(${b.p.c}, ${b.p.t});\n`,
+  help:"CNOT — контролируемый X."},
+
+ measure:{allowIn:["operation","if","for","while"],p:{q:"q"},c:0,code:(b,i)=>`${i}let m = M(${b.p.q});\n`,
+  help:"measure — измерение кубита."}
 };
 
 /* ===== CORE ===== */
@@ -194,7 +210,7 @@ function draw(b,parentType,parentArray){
  const title=document.createElement("div"); title.className="block-title"; title.textContent=b.t;
 
  if(R[b.t].c){
-   const add=document.createElement("button"); add.className="add"; add.textContent="+"; 
+   const add=document.createElement("button"); add.className="add"; add.textContent="+";
    add.onmouseenter=e=>{
      tooltip.style.display="block";
      tooltip.style.left=(e.clientX+10)+"px";
@@ -225,7 +241,31 @@ function draw(b,parentType,parentArray){
 
  d.append(title);
 
+ // Параметры для операций/функций
+ if(b.t==="operation"||b.t==="function"){
+   const paramsDiv=document.createElement("div"); paramsDiv.style.marginTop="4px";
+   paramsDiv.textContent="params: ";
+   const addParam=document.createElement("button"); addParam.textContent="+";
+   addParam.className="add";
+   addParam.onclick=e=>{
+     e.stopPropagation();
+     b.p.params.push({name:"i",type:"Int"});
+     init();
+   };
+   paramsDiv.append(addParam);
+   b.p.params.forEach((p,idx)=>{
+     const inpName=document.createElement("input"); inpName.value=p.name;
+     inpName.style.width="50px";
+     inpName.oninput=e=>{p.name=inpName.value; updateCode();};
+     const inpType=document.createElement("input"); inpType.value=p.type;
+     inpType.style.width="50px"; inpType.oninput=e=>{p.type=inpType.value; updateCode();};
+     paramsDiv.append(inpName, document.createTextNode(" : "), inpType, document.createTextNode(" "));
+   });
+   d.append(paramsDiv);
+ }
+
  for(const k in b.p){
+   if(k==="params") continue;
    const wrapper=document.createElement("div"); wrapper.style.marginTop="4px";
    const label=document.createElement("label"); label.textContent=k+": ";
    const inp=document.createElement("input"); inp.value=b.p[k];
