@@ -37,7 +37,6 @@ input:focus{outline:none;border-color:var(--accent)}
 
 pre{font-size:12px;color:#d1fae5;background:#0b0e13;border-radius:10px;padding:12px;border:1px solid var(--border);white-space:pre-wrap}
 
-/* ADD MENU */
 .menu{position:fixed;background:var(--card);border:1px solid var(--border);border-radius:8px;display:none;z-index:1000;min-width:160px;}
 .menu div{padding:8px 12px;cursor:pointer;}
 .menu div:hover{background:var(--hover)}
@@ -73,40 +72,43 @@ pre{font-size:12px;color:#d1fae5;background:#0b0e13;border-radius:10px;padding:1
 
 <script>
 /* ===== BLOCK TYPES ===== */
-const R={
- namespace:{allowIn:["ROOT"],p:{name:"MyProgram"},c:1,
-   code:(b,i)=>`${i}namespace ${b.p.name} {\n${b.c.map(x=>g(x,i+"    ")).join("")}${i}}\n`, help:"Namespace — Q# пространство имён"},
+const R = {
+  namespace:{allowIn:["ROOT"],p:{name:"MyProgram"},c:1,
+    code:(b,i)=>`${i}namespace ${b.p.name} {\n${b.c.map(x=>g(x,i+"    ")).join("")}${i}}\n`, help:"Namespace — Q# пространство имён"},
 
- open:{allowIn:["namespace"],p:{lib:"Microsoft.Quantum.Intrinsic"},c:0,
-   code:(b,i)=>`${i}open ${b.p.lib};\n`, help:"Open — подключение библиотеки"},
+  open:{allowIn:["namespace"],p:{lib:"Microsoft.Quantum.Intrinsic"},c:0,
+    code:(b,i)=>`${i}open ${b.p.lib};\n`, help:"Open — подключение библиотеки"},
 
- operation:{allowIn:["namespace"],p:{name:"Main",ret:"Unit",params:[]},c:1,
-   code:(b,i)=>{
-     const params=b.p.params.map(p=>`${p.name} : ${p.type}`).join(", ");
-     return `${i}operation ${b.p.name}(${params}) : ${b.p.ret} {\n${b.c.map(x=>g(x,i+"    ")).join("")}${i}}\n`;
-   }, help:"Operation — операция с кубитами"},
+  operation:{allowIn:["namespace"],p:{name:"Main",ret:"Unit",params:[]},c:1,
+    code:(b,i)=>{
+      const params=b.p.params.map(p=>`${p.name} : ${p.type}`).join(", ");
+      return `${i}operation ${b.p.name}(${params}) : ${b.p.ret} {\n${b.c.map(x=>g(x,i+"    ")).join("")}${i}}\n`;
+    }, help:"Operation — операция с кубитами"},
 
- function:{allowIn:["namespace"],p:{name:"Func",ret:"Int",params:[]},c:1,
-   code:(b,i)=>{
-     const params=b.p.params.map(p=>`${p.name} : ${p.type}`).join(", ");
-     return `${i}function ${b.p.name}(${params}) : ${b.p.ret} {\n${b.c.map(x=>g(x,i+"    ")).join("")}${i}}\n`;
-   }, help:"Function — возвращает значение"},
+  function:{allowIn:["namespace"],p:{name:"Func",ret:"Int",params:[]},c:1,
+    code:(b,i)=>{
+      const params=b.p.params.map(p=>`${p.name} : ${p.type}`).join(", ");
+      return `${i}function ${b.p.name}(${params}) : ${b.p.ret} {\n${b.c.map(x=>g(x,i+"    ")).join("")}${i}}\n`;
+    }, help:"Function — возвращает значение"},
 
- if:{allowIn:["operation","function","if","for","while"],p:{cond:"true"},c:1,
-   code:(b,i)=>`${i}if (${b.p.cond}) {\n${b.c.map(x=>g(x,i+"    ")).join("")}${i}}\n`, help:"If — условие"},
+  if:{allowIn:["operation","function","if","for","while"],p:{cond:"true"},c:1,
+    code:(b,i)=>`${i}if (${b.p.cond}) {\n${b.c.map(x=>g(x,i+"    ")).join("")}${i}}\n`, help:"If — условие"},
 
- for:{allowIn:["operation","function","if","for","while"],p:{v:"i",a:"0",b:"10"},c:1,
-   code:(b,i)=>`${i}for (${b.p.v} in ${b.p.a}..${b.p.b}) {\n${b.c.map(x=>g(x,i+"    ")).join("")}${i}}\n`, help:"For — цикл"},
+  for:{allowIn:["operation","function","if","for","while"],p:{v:"i",a:"0",b:"10"},c:1,
+    code:(b,i)=>`${i}for (${b.p.v} in ${b.p.a}..${b.p.b}) {\n${b.c.map(x=>g(x,i+"    ")).join("")}${i}}\n`, help:"For — цикл"},
 
- while:{allowIn:["operation","function","if","for","while"],p:{cond:"true"},c:1,
-   code:(b,i)=>`${i}while (${b.p.cond}) {\n${b.c.map(x=>g(x,i+"    ")).join("")}${i}}\n`, help:"While — цикл"},
+  while:{allowIn:["operation","function","if","for","while"],p:{cond:"true"},c:1,
+    code:(b,i)=>`${i}while (${b.p.cond}) {\n${b.c.map(x=>g(x,i+"    ")).join("")}${i}}\n`, help:"While — цикл"},
 
- use:{allowIn:["operation"],p:{q:"q"},c:0,code:(b,i)=>`${i}use ${b.p.q} = Qubit();\n`, help:"Use — выделение кубита"},
- let:{allowIn:["operation","function"],p:{n:"x",v:"0"},c:0,code:(b,i)=>`${i}let ${b.p.n} = ${b.p.v};\n`, help:"Let — переменная"},
- return:{allowIn:["operation","function"],p:{v:"()"},c:0,code:(b,i)=>`${i}return ${b.p.v};\n`, help:"Return — возврат значения"},
- H:{allowIn:["operation","if","for","while"],p:{q:"q"},c:0,code:(b,i)=>`${i}H(${b.p.q});\n`, help:"Гейт Адамара"},
- X:{allowIn:["operation","if","for","while"],p:{q:"q"},c:0,code:(b,i)=>`${i}X(${b.p.q});\n`, help:"Гейт Паули X"},
- CNOT:{allowIn:["operation","if","for","while"],p:{c:"c",t:"t"},c:0,code:(b,i)=>`${i}CNOT(${b.p.c}, ${b.p.t});\n`, help:"Контролируемый X"}
+  use:{allowIn:["operation"],p:{q:"q"},c:0,code:(b,i)=>`${i}use ${b.p.q} = Qubit();\n`, help:"Use — выделение кубита"},
+  let:{allowIn:["operation","function"],p:{n:"x",v:"0"},c:0,code:(b,i)=>`${i}let ${b.p.n} = ${b.p.v};\n`, help:"Let — переменная"},
+  return:{allowIn:["operation","function"],p:{v:"()"},c:0,code:(b,i)=>`${i}return ${b.p.v};\n`, help:"Return — возврат значения"},
+  H:{allowIn:["operation","if","for","while"],p:{q:"q"},c:0,code:(b,i)=>`${i}H(${b.p.q});\n`, help:"Гейт Адамара"},
+  X:{allowIn:["operation","if","for","while"],p:{q:"q"},c:0,code:(b,i)=>`${i}X(${b.p.q});\n`, help:"Гейт Паули X"},
+  CNOT:{allowIn:["operation","if","for","while"],p:{c:"c",t:"t"},c:0,code:(b,i)=>`${i}CNOT(${b.p.c}, ${b.p.t});\n`, help:"Контролируемый X"},
+
+  call:{allowIn:["operation","function","if","for","while"],p:{name:"Main",args:[]},c:0,
+    code:(b,i)=>`${i}${b.p.name}(${b.p.args.join(", ")});\n`, help:"Call — вызов операции или функции"}
 };
 
 /* ===== CORE ===== */
@@ -120,7 +122,6 @@ const addMenu=document.getElementById("addMenu");
 const tooltip=document.getElementById("tooltip");
 
 function init(){workspace.innerHTML="";root.forEach(b=>workspace.append(draw(b,"ROOT",root))); updateCode();}
-
 function updateCode(){ code.textContent=root.map(b=>g(b,"")).join(""); }
 
 function draw(b,parentType,parentArray){
@@ -140,11 +141,78 @@ function draw(b,parentType,parentArray){
 
  d.append(title);
 
+ // Обычные поля кроме params и args
  for(const k in b.p){
-   const wrapper=document.createElement("div"); wrapper.style.marginTop="4px";
-   const label=document.createElement("label"); label.textContent=k+": ";
-   const inp=document.createElement("input"); inp.value=b.p[k]; inp.addEventListener("input",()=>{b.p[k]=inp.value; updateCode();});
-   label.appendChild(inp); wrapper.appendChild(label); d.append(wrapper);
+   if(k!=="params" && k!=="args"){
+     const wrapper=document.createElement("div"); wrapper.style.marginTop="4px";
+     const label=document.createElement("label"); label.textContent=k+": ";
+     const inp=document.createElement("input"); inp.value=b.p[k]; inp.addEventListener("input",()=>{b.p[k]=inp.value; updateCode();});
+     label.appendChild(inp); wrapper.appendChild(label); d.append(wrapper);
+   }
+ }
+
+ // Параметры для operation/function
+ if(b.t==="operation" || b.t==="function"){
+   const paramsDiv=document.createElement("div"); paramsDiv.style.marginTop="4px";
+   const paramsTitle=document.createElement("div"); paramsTitle.textContent="Parameters:"; paramsDiv.appendChild(paramsTitle);
+   const listDiv=document.createElement("div"); listDiv.style.marginLeft="10px"; paramsDiv.appendChild(listDiv);
+
+   function redrawParams(){
+     listDiv.innerHTML="";
+     b.p.params.forEach((p,idx)=>{
+       const pDiv=document.createElement("div");
+       const nameInp=document.createElement("input"); nameInp.value=p.name; nameInp.style.width="60px";
+       nameInp.addEventListener("input",()=>{p.name=nameInp.value; updateCode();});
+       const typeInp=document.createElement("input"); typeInp.value=p.type; typeInp.style.width="60px";
+       typeInp.addEventListener("input",()=>{p.type=typeInp.value; updateCode();});
+       const delBtn=document.createElement("button"); delBtn.textContent="×"; delBtn.className="delete";
+       delBtn.onclick=()=>{b.p.params.splice(idx,1); redrawParams(); updateCode();};
+       pDiv.append(nameInp,typeInp,delBtn);
+       listDiv.appendChild(pDiv);
+     });
+   }
+   redrawParams();
+   const addParamBtn=document.createElement("button"); addParamBtn.textContent="+ Add Param"; addParamBtn.className="add";
+   addParamBtn.onclick=()=>{b.p.params.push({name:"p",type:"Int"}); redrawParams(); updateCode();};
+   paramsDiv.appendChild(addParamBtn);
+   d.append(paramsDiv);
+ }
+
+ // Call block с одним Name
+ if(b.t==="call"){
+   const callDiv=document.createElement("div"); callDiv.style.marginTop="4px";
+
+   // Поле Name
+   const nameLabel=document.createElement("label"); nameLabel.textContent="Name: ";
+   const nameInp=document.createElement("input"); nameInp.value=b.p.name; nameInp.style.width="120px";
+   nameInp.addEventListener("input",()=>{b.p.name=b.value; updateCode();});
+   nameLabel.appendChild(nameInp);
+   callDiv.appendChild(nameLabel);
+
+   // Аргументы
+   const argsDiv=document.createElement("div"); argsDiv.style.marginTop="4px";
+   const argsTitle=document.createElement("div"); argsTitle.textContent="Arguments:"; argsDiv.appendChild(argsTitle);
+   const listDiv=document.createElement("div"); listDiv.style.marginLeft="10px"; argsDiv.appendChild(listDiv);
+
+   function redrawArgs(){
+     listDiv.innerHTML="";
+     b.p.args.forEach((a,idx)=>{
+       const aDiv=document.createElement("div");
+       const inp=document.createElement("input"); inp.value=a; inp.style.width="100px";
+       inp.addEventListener("input",()=>{b.p.args[idx]=inp.value; updateCode();});
+       const delBtn=document.createElement("button"); delBtn.textContent="×"; delBtn.className="delete";
+       delBtn.onclick=()=>{b.p.args.splice(idx,1); redrawArgs(); updateCode();};
+       aDiv.append(inp,delBtn); listDiv.appendChild(aDiv);
+     });
+   }
+   redrawArgs();
+
+   const addArgBtn=document.createElement("button"); addArgBtn.textContent="+ Add Arg"; addArgBtn.className="add";
+   addArgBtn.onclick=()=>{b.p.args.push("arg"); redrawArgs(); updateCode();};
+   argsDiv.appendChild(addArgBtn);
+
+   callDiv.appendChild(argsDiv);
+   d.append(callDiv);
  }
 
  if(b.c.length){const iDiv=document.createElement("div"); iDiv.className="inner"; b.c.forEach(x=>iDiv.append(draw(x,b.t,b.c))); d.append(iDiv);}
