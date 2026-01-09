@@ -2,8 +2,8 @@ namespace TP{
     operation QuantumTeleport(msg : Qubit, target : Qubit) : Unit{
         use aliceQubit = Qubit();
         H(aliceQubit);
-        CNOT(aliceQubit, target);
-        CNOT(msg, aliceQubit);
+        CX(aliceQubit, target);
+        CX(msg, aliceQubit);
         H(msg);
 
         let m1 = M(aliceQubit);

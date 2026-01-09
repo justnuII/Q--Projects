@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Quantum Visual IDE</title>
+<style>
+:root{
+  --bg:#0e1116;
+  --panel:#151a21;
+  --card:#1b222c;
+  --hover:#222b36;
+  --text:#e6e8eb;
+  --muted:#9aa4b2;
+  --accent:#6ee7b7;
+  --border:#2a3340;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Segoe UI,sans-serif}
+header{padding:14px 20px;font-weight:600;border-bottom:1px solid var(--border)}
+#layout{display:grid;grid-template-columns:240px 1fr 420px;height:calc(100vh - 52px)}
+.panel{padding:14px;overflow:auto}
+.left{background:var(--panel);border-right:1px solid var(--border)}
+.right{background:var(--panel);border-left:1px solid var(--border)}
+
+.block{background:var(--card);border:1px solid var(--border);border-radius:10px;
+padding:10px;margin:6px 0;position:relative}
+.block:hover{background:var(--hover)}
+.block-title{display:flex;align-items:center;gap:6px;font-weight:600}
+
+.add{
+  background:transparent;border:1px dashed var(--border);
+  color:var(--muted);border-radius:6px;
+  padding:2px 6px;cursor:pointer;position:relative;
+}
+.add:hover{color:var(--text);border-color:var(--accent)}
+
+.delete, .up, .down{
+  background:transparent;border:none;
+  font-weight:bold;
+  cursor:pointer;margin-left:4px;
+}
+.delete{color:#f87171;}
+.delete:hover{color:#ff4d4d;}
+.up, .down{color:#6ee7b7;}
+.up:hover, .down:hover{color:#34d399;}
+
+.inner{margin-left:16px;padding-left:10px;border-left:1px dashed var(--border)}
+
+input{
+  background:#0c0f14;border:1px solid var(--border);
+  color:var(--text);border-radius:6px;
+  padding:3px 6px;font-size:12px;width:90px
+}
+input:focus{outline:none;border-color:var(--accent)}
+
+pre{
+  font-size:12px;color:#d1fae5;
+  background:#0b0e13;border-radius:10px;
+  padding:12px;border:1px solid var(--border)
+}
+
+/* ADD MENU */
+.menu{
+  position:fixed;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:8px;
+  display:none;
+  z-index:1000;
+  min-width:160px;
+}
+.menu div{
+  padding:8px 12px;
+  cursor:pointer;
+}
+.menu div:hover{background:var(--hover)}
+
+/* Подсказки */
+.tooltip{
+  position:absolute;
+  background:#1b222c;
+  border:1px solid var(--border);
+  padding:6px 8px;
+  border-radius:6px;
+  font-size:12px;
+  color:var(--muted);
+  white-space:pre-wrap;
+  max-width:220px;
+  z-index:1000;
+  display:none;
+}
+</style>
+</head>
+
+<body>
+<header>⚛ Quantum Visual IDE</header>
+
+<div id="layout">
+  <div class="panel left">
+    <div id="rootAdd" class="add">＋ Add block</div>
+  </div>
+
+  <div class="panel" id="workspace"></div>
+
+  <div class="panel right">
+    <h3 style="margin-top:0;color:var(--muted)">Q# code</h3>
+    <pre id="code"></pre>
+  </div>
+</div>
+
+<div class="menu" id="addMenu"></div>
+<div id="tooltip" class="tooltip"></div>
+
+<script>
+/* ===== REGISTRY + RULES ===== */
+const R={
+ namespace:{allowIn:["ROOT"],p:{name:"MyProgram"},c:1,
+  code:(b,i)=>`${i}namespace ${b.p.name} {\n${b.c.map(x=>g(x,i+"    ")).join("")}${i}}\n`,
+  help:"namespace — создаёт пространство имён Q#.\nПример:\nnamespace MyProgram { ... }"},
+ open:{allowIn:["namespace"],p:{lib:"Microsoft.Quantum.Intrinsic"},c:0,
+  code:(b,i)=>`${i}open ${b.p.lib};\n`,
+  help:"open — подключает библиотеку Q#.\nПример:\nopen Microsoft.Quantum.Intrinsic;"},
+ operation:{allowIn:["namespace"],p:{name:"Main",ret:"Unit"},c:1,
+  code:(b,i)=>`${i}operation ${b.p.name}() : ${b.p.ret} {\n${b.c.map(x=>g(x,i+"    ")).join("")}${i}}\n`,
+  help:"operation — операция (функция) с кубитами.\nПример:\noperation Main() : Unit { ... }"},
+ function:{allowIn:["namespace"],p:{name:"Func",ret:"Int"},c:1,
+  code:(b,i)=>`${i}function ${b.p.name}() : ${b.p.ret} {\n${b.c.map(x=>g(x,i+"    ")).join("")}${i}}\n`,
+  help:"function — функция с возвратом значения.\nПример:\nfunction Func() : Int { ... }"},
+ if:{allowIn:["operation","function","if","for","while"],p:{cond:"true"},c:1,
+  code:(b,i)=>`${i}if (${b.p.cond}) {\n${b.c.map(x=>g(x,i+"    ")).join("")}${i}}\n`,
+  help:"if — условие.\nПример:\nif (x>0) { ... }"},
+ for:{allowIn:["operation","function","if","for","while"],p:{v:"i",a:"0",b:"10"},c:1,
+  code:(b,i)=>`${i}for (${b.p.v} in ${b.p.a}..${b.p.b}) {\n${b.c.map(x=>g(x,i+"    ")).join("")}${i}}\n`,
+  help:"for — цикл.\nПример:\nfor (i in 0..10) { ... }"},
+ while:{allowIn:["operation","function","if","for","while"],p:{cond:"true"},c:1,
+  code:(b,i)=>`${i}while (${b.p.cond}) {\n${b.c.map(x=>g(x,i+"    ")).join("")}${i}}\n`,
+  help:"while — цикл с условием.\nПример:\nwhile (cond) { ... }"},
+ use:{allowIn:["operation"],p:{q:"q"},c:0,
+  code:(b,i)=>`${i}use ${b.p.q} = Qubit();\n`,
+  help:"use — выделяет кубит.\nПример:\nuse q = Qubit();"},
+ let:{allowIn:["operation","function"],p:{n:"x",v:"0"},c:0,
+  code:(b,i)=>`${i}let ${b.p.n} = ${b.p.v};\n`,
+  help:"let — переменная.\nПример:\nlet x = 0;"},
+ return:{allowIn:["operation","function"],p:{v:"()"},c:0,
+  code:(b,i)=>`${i}return ${b.p.v};\n`,
+  help:"return — возвращает значение.\nПример:\nreturn ();"},
+ H:{allowIn:["operation","if","for","while"],p:{q:"q"},c:0,code:(b,i)=>`${i}H(${b.p.q});\n`,
+  help:"H — гейт Адамара.\nПример:\nH(q);"},
+ X:{allowIn:["operation","if","for","while"],p:{q:"q"},c:0,code:(b,i)=>`${i}X(${b.p.q});\n`,
+  help:"X — гейт Паули X.\nПример:\nX(q);"},
+ Y:{allowIn:["operation","if","for","while"],p:{q:"q"},c:0,code:(b,i)=>`${i}Y(${b.p.q});\n`,
+  help:"Y — гейт Паули Y.\nПример:\nY(q);"},
+ Z:{allowIn:["operation","if","for","while"],p:{q:"q"},c:0,code:(b,i)=>`${i}Z(${b.p.q});\n`,
+  help:"Z — гейт Паули Z.\nПример:\nZ(q);"},
+ Rx:{allowIn:["operation","if","for","while"],p:{a:"PI()/2",q:"q"},c:0,
+  code:(b,i)=>`${i}Rx(${b.p.a}, ${b.p.q});\n`,
+  help:"Rx — вращение вокруг X.\nПример:\nRx(PI()/2, q);"},
+ Ry:{allowIn:["operation","if","for","while"],p:{a:"PI()/2",q:"q"},c:0,
+  code:(b,i)=>`${i}Ry(${b.p.a}, ${b.p.q});\n`,
+  help:"Ry — вращение вокруг Y.\nПример:\nRy(PI()/2, q);"},
+ Rz:{allowIn:["operation","if","for","while"],p:{a:"PI()/2",q:"q"},c:0,
+  code:(b,i)=>`${i}Rz(${b.p.a}, ${b.p.q});\n`,
+  help:"Rz — вращение вокруг Z.\nПример:\nRz(PI()/2, q);"},
+ CNOT:{allowIn:["operation","if","for","while"],p:{c:"c",t:"t"},c:0,
+  code:(b,i)=>`${i}CNOT(${b.p.c}, ${b.p.t});\n`,
+  help:"CNOT — контролируемый X.\nПример:\nCNOT(c,t);"},
+ measure:{allowIn:["operation","if","for","while"],p:{q:"q"},c:0,
+  code:(b,i)=>`${i}let m = M(${b.p.q});\n`,
+  help:"measure — измерение кубита.\nПример:\nlet m = M(q);"}
+};
+
+/* ===== CORE ===== */
+let root=[];
+const nb=t=>({id:crypto.randomUUID(),t,p:{...R[t].p},c:[]});
+const g=(b,i)=>R[b.t].code(b,i);
+
+const workspace = document.getElementById("workspace");
+const code = document.getElementById("code");
+const addMenu = document.getElementById("addMenu");
+const tooltip = document.getElementById("tooltip");
+
+function init(){
+  workspace.innerHTML="";
+  root.forEach(b=>workspace.append(draw(b,"ROOT",root)));
+  updateCode();
+}
+
+function updateCode(){
+  code.textContent=root.map(b=>g(b,"")).join("");
+}
+
+function draw(b,parentType,parentArray){
+ const d=document.createElement("div"); d.className="block";
+ const title=document.createElement("div"); title.className="block-title"; title.textContent=b.t;
+
+ if(R[b.t].c){
+   const add=document.createElement("button"); add.className="add"; add.textContent="+"; 
+   add.onmouseenter=e=>{
+     tooltip.style.display="block";
+     tooltip.style.left=(e.clientX+10)+"px";
+     tooltip.style.top=(e.clientY+10)+"px";
+     tooltip.textContent=R[b.t].help;
+   };
+   add.onmouseleave=e=>{tooltip.style.display="none";};
+   add.onclick=e=>{e.stopPropagation(); openAddMenu(e.clientX,e.clientY,b)};
+   title.append(add);
+ }
+
+ const up=document.createElement("button"); up.className="up"; up.textContent="↑";
+ up.onclick=e=>{e.stopPropagation(); moveBlock(b,parentArray,-1);};
+ title.append(up);
+
+ const down=document.createElement("button"); down.className="down"; down.textContent="↓";
+ down.onclick=e=>{e.stopPropagation(); moveBlock(b,parentArray,1);};
+ title.append(down);
+
+ const del=document.createElement("button"); del.className="delete"; del.textContent="×";
+ del.onclick=e=>{
+   e.stopPropagation();
+   const arr=findParentArray(b,parentArray);
+   const idx=arr.findIndex(x=>x.id===b.id);
+   if(idx>=0) arr.splice(idx,1); init();
+ };
+ title.append(del);
+
+ d.append(title);
+
+ for(const k in b.p){
+   const wrapper=document.createElement("div"); wrapper.style.marginTop="4px";
+   const label=document.createElement("label"); label.textContent=k+": ";
+   const inp=document.createElement("input"); inp.value=b.p[k];
+   inp.addEventListener("input",()=> { b.p[k]=inp.value; updateCode(); });
+   label.appendChild(inp); wrapper.appendChild(label); d.appendChild(wrapper);
+ }
+
+ if(b.c.length){
+   const iDiv=document.createElement("div"); iDiv.className="inner";
+   b.c.forEach(x=>iDiv.append(draw(x,b.t,b.c))); d.append(iDiv);
+ }
+
+ return d;
+}
+
+function moveBlock(block,array,dir){
+  const idx=array.findIndex(x=>x.id===block.id);
+  const newIdx=idx+dir;
+  if(newIdx<0 || newIdx>=array.length) return;
+  [array[idx], array[newIdx]] = [array[newIdx], array[idx]];
+  init();
+}
+
+function findParentArray(target,array){
+  if(array.includes(target)) return array;
+  for(const b of array){
+    const res=findParentArray(target,b.c);
+    if(res) return res;
+  }
+  return null;
+}
+
+/* ===== ADD MENU ===== */
+function openAddMenu(x,y,parent){
+  addMenu.innerHTML="";
+  const parentType = parent?parent.t:"ROOT";
+  Object.keys(R).forEach(t=>{
+    if(R[t].allowIn.includes(parentType)){
+      const item=document.createElement("div"); item.textContent=t;
+      item.onmouseenter=e=>{
+        tooltip.style.display="block";
+        tooltip.style.left=(e.clientX+10)+"px";
+        tooltip.style.top=(e.clientY+10)+"px";
+        tooltip.textContent=R[t].help;
+      };
+      item.onmouseleave=e=>{tooltip.style.display="none";};
+      item.onclick=e=>{e.stopPropagation(); parent?parent.c.push(nb(t)):root.push(nb(t)); addMenu.style.display="none"; init(); };
+      addMenu.append(item);
+    }
+  });
+  addMenu.style.left=x+"px"; addMenu.style.top=y+"px"; addMenu.style.display="block";
+}
+
+document.getElementById("rootAdd").onclick=e=>{ e.stopPropagation(); openAddMenu(e.clientX,e.clientY,null); };
+document.body.addEventListener("click",()=>{addMenu.style.display="none"; tooltip.style.display="none";});
+addMenu.addEventListener("click",e=>e.stopPropagation());
+
+init();
+</script>
+</body>
+</html>
