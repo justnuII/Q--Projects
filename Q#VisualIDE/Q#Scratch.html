@@ -309,7 +309,7 @@ function openAddMenu(x,y,parent){
         tooltip.style.display="block";
         tooltip.style.left=(e.clientX+10)+"px";
         tooltip.style.top=(e.clientY+10)+"px";
-        tooltip.textContent=R[t].help;
+        tooltip.textContent=R[t].help;b 
       };
       item.onmouseleave=e=>{tooltip.style.display="none";};
       item.onclick=e=>{e.stopPropagation(); parent?parent.c.push(nb(t)):root.push(nb(t)); addMenu.style.display="none"; init(); };

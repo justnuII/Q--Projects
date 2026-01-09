@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Assembler Visual IDE</title>
+<style>
+:root{
+  --bg:#1a0000;
+  --panel:#2b0000;
+  --card:#3a0000;
+  --hover:#4d0000;
+  --text:#ffcccc;
+  --muted:#ff9999;
+  --accent:#ff4d4d;
+  --border:#660000;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Segoe UI,sans-serif}
+header{padding:14px 20px;font-weight:600;border-bottom:1px solid var(--border)}
+#layout{display:grid;grid-template-columns:240px 1fr 420px;height:calc(100vh - 52px)}
+.panel{padding:14px;overflow:auto}
+.left{background:var(--panel);border-right:1px solid var(--border)}
+.right{background:var(--panel);border-left:1px solid var(--border)}
+.block{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px;margin:6px 0;position:relative}
+.block:hover{background:var(--hover)}
+.block-title{display:flex;align-items:center;gap:6px;font-weight:600}
+.add{background:transparent;border:1px dashed var(--border);color:var(--muted);border-radius:6px;padding:2px 6px;cursor:pointer;position:relative;}
+.add:hover{color:var(--text);border-color:var(--accent)}
+.delete, .up, .down{background:transparent;border:none;font-weight:bold;cursor:pointer;margin-left:4px}
+.delete{color:#ff6666;}
+.delete:hover{color:#ff3333;}
+.up, .down{color:var(--accent);}
+.up:hover, .down:hover{color:#ff9999;}
+.inner{margin-left:16px;padding-left:10px;border-left:1px dashed var(--border)}
+input{background:#2b0000;border:1px solid var(--border);color:var(--text);border-radius:6px;padding:3px 6px;font-size:12px;width:90px}
+input:focus{outline:none;border-color:var(--accent)}
+pre{font-size:12px;color:#ff9999;background:#330000;border-radius:10px;padding:12px;border:1px solid var(--border)}
+.menu{position:fixed;background:var(--card);border:1px solid var(--border);border-radius:8px;display:none;z-index:1000;min-width:160px;}
+.menu div{padding:8px 12px;cursor:pointer;}
+.menu div:hover{background:var(--hover)}
+.tooltip{position:absolute;background:#3a0000;border:1px solid var(--border);padding:6px 8px;border-radius:6px;font-size:12px;color:var(--muted);white-space:pre-wrap;max-width:220px;z-index:1000;display:none;}
+</style>
+</head>
+<body>
+<header>⚡ Assembler Visual IDE</header>
+<div id="layout">
+  <div class="panel left">
+    <div id="rootAdd" class="add">＋ Add block</div>
+  </div>
+  <div class="panel" id="workspace"></div>
+  <div class="panel right">
+    <h3 style="margin-top:0;color:var(--muted)">Assembly code</h3>
+    <pre id="code"></pre>
+  </div>
+</div>
+<div class="menu" id="addMenu"></div>
+<div id="tooltip" class="tooltip"></div>
+<script>
+const R={
+  MOV:{allowIn:["ROOT","FUNC","POD_FUNC","block"],p:{dst:"AX",src:"0"},c:0,code:(b,i)=>`${i}MOV ${b.p.dst}, ${b.p.src}\n`,help:"MOV — перемещает значение в регистр\nПример: MOV AX, 5"},
+  ADD:{allowIn:["ROOT","FUNC","POD_FUNC","block"],p:{dst:"AX",src:"BX"},c:0,code:(b,i)=>`${i}ADD ${b.p.dst}, ${b.p.src}\n`,help:"ADD — сложение\nПример: ADD AX, BX"},
+  SUB:{allowIn:["ROOT","FUNC","POD_FUNC","block"],p:{dst:"AX",src:"BX"},c:0,code:(b,i)=>`${i}SUB ${b.p.dst}, ${b.p.src}\n`,help:"SUB — вычитание\nПример: SUB AX, BX"},
+  MUL:{allowIn:["ROOT","FUNC","POD_FUNC","block"],p:{reg:"AX"},c:0,code:(b,i)=>`${i}MUL ${b.p.reg}\n`,help:"MUL — умножение\nПример: MUL AX"},
+  DIV:{allowIn:["ROOT","FUNC","POD_FUNC","block"],p:{reg:"AX"},c:0,code:(b,i)=>`${i}DIV ${b.p.reg}\n`,help:"DIV — деление\nПример: DIV AX"},
+  INC:{allowIn:["ROOT","FUNC","POD_FUNC","block"],p:{reg:"AX"},c:0,code:(b,i)=>`${i}INC ${b.p.reg}\n`,help:"INC — увеличить на 1\nПример: INC AX"},
+  DEC:{allowIn:["ROOT","FUNC","POD_FUNC","block"],p:{reg:"AX"},c:0,code:(b,i)=>`${i}DEC ${b.p.reg}\n`,help:"DEC — уменьшить на 1\nПример: DEC AX"},
+  JMP:{allowIn:["ROOT","FUNC","POD_FUNC","block"],p:{label:"start"},c:0,code:(b,i)=>`${i}JMP ${b.p.label}\n`,help:"JMP — безусловный переход\nПример: JMP start"},
+  CMP:{allowIn:["ROOT","FUNC","POD_FUNC","block"],p:{dst:"AX",src:"BX"},c:0,code:(b,i)=>`${i}CMP ${b.p.dst}, ${b.p.src}\n`,help:"CMP — сравнение\nПример: CMP AX, BX"},
+  JE:{allowIn:["ROOT","FUNC","POD_FUNC","block"],p:{label:"start"},c:0,code:(b,i)=>`${i}JE ${b.p.label}\n`,help:"JE — переход если равно\nПример: JE start"},
+  JNE:{allowIn:["ROOT","FUNC","POD_FUNC","block"],p:{label:"start"},c:0,code:(b,i)=>`${i}JNE ${b.p.label}\n`,help:"JNE — переход если не равно\nПример: JNE start"},
+  CALL:{allowIn:["ROOT","FUNC","POD_FUNC","block"],p:{func:"func"},c:0,code:(b,i)=>`${i}CALL ${b.p.func}\n`,help:"CALL — вызов функции\nПример: CALL func"},
+  RET:{allowIn:["ROOT","FUNC","POD_FUNC","block"],p:{},c:0,code:(b,i)=>`${i}RET\n`,help:"RET — возврат из функции"},
+  FUNC:{allowIn:["ROOT"],p:{name:"func"},c:1,code:(b,i)=>`${i}${b.p.name}:
+${b.c.map(x=>g(x,i+"  ")).join('')}  RET
+`,help:"FUNC — функция\nПример: func: ... RET"},
+  POD_FUNC:{allowIn:["FUNC"],p:{name:"pod_func"},c:1,code:(b,i)=>`${i}.${b.p.name}:
+${b.c.map(x=>g(x,i+"  ")).join('')}  RET
+`,help:"Подфункция — внутри функции\nПример: .pod_func: ... RET"}
+};
+
+let root=[];
+const nb=t=>({id:crypto.randomUUID(),t,p:{...R[t].p},c:[]});
+const g=(b,i)=>R[b.t].code(b,i);
+
+const workspace=document.getElementById("workspace");
+const code=document.getElementById("code");
+const addMenu=document.getElementById("addMenu");
+const tooltip=document.getElementById("tooltip");
+
+function init(){workspace.innerHTML="";root.forEach(b=>workspace.append(draw(b,"ROOT",root)));updateCode();}
+function updateCode(){code.textContent=root.map(b=>g(b,"")).join("");}
+
+function draw(b,parentType,parentArray){
+ const d=document.createElement("div");d.className="block";
+ const title=document.createElement("div");title.className="block-title";title.textContent=b.t;
+ const add=document.createElement("button");add.className="add";add.textContent="+";
+ add.onmouseenter=e=>{tooltip.style.display="block";tooltip.style.left=(e.clientX+10)+"px";tooltip.style.top=(e.clientY+10)+"px";tooltip.textContent=R[b.t]?.help||"";};
+ add.onmouseleave=e=>{tooltip.style.display="none";};
+ add.onclick=e=>{e.stopPropagation();openAddMenu(e.clientX,e.clientY,b)};
+ title.append(add);
+ const up=document.createElement("button");up.className="up";up.textContent="↑";up.onclick=e=>{e.stopPropagation();moveBlock(b,parentArray,-1);};title.append(up);
+ const down=document.createElement("button");down.className="down";down.textContent="↓";down.onclick=e=>{e.stopPropagation();moveBlock(b,parentArray,1);};title.append(down);
+ const del=document.createElement("button");del.className="delete";del.textContent="×";del.onclick=e=>{e.stopPropagation();const arr=findParentArray(b,parentArray);const idx=arr.findIndex(x=>x.id===b.id);if(idx>=0)arr.splice(idx,1);init();};title.append(del);
+ d.append(title);
+ for(const k in b.p){
+  const wrapper=document.createElement("div");wrapper.style.marginTop="4px";
+  const label=document.createElement("label");label.textContent=k+": ";
+  const inp=document.createElement("input");inp.value=b.p[k];inp.addEventListener("input",()=>{b.p[k]=inp.value;updateCode();});
+  label.appendChild(inp);wrapper.appendChild(label);d.appendChild(wrapper);
+ }
+ if(b.c.length){const iDiv=document.createElement("div");iDiv.className="inner";b.c.forEach(x=>iDiv.append(draw(x,b.t,b.c)));d.append(iDiv);}
+ return d;
+}
+
+function moveBlock(block,array,dir){const idx=array.findIndex(x=>x.id===block.id);const newIdx=idx+dir;if(newIdx<0||newIdx>=array.length)return;[array[idx],array[newIdx]]=[array[newIdx],array[idx]];init();}
+function findParentArray(target,array){if(array.includes(target))return array;for(const b of array){const res=findParentArray(target,b.c);if(res)return res;}return null;}
+
+function openAddMenu(x,y,parent){addMenu.innerHTML="";const parentType=parent?parent.t:"ROOT";Object.keys(R).forEach(t=>{if(R[t].allowIn.includes(parentType)){const item=document.createElement("div");item.textContent=t;item.onmouseenter=e=>{tooltip.style.display="block";tooltip.style.left=(e.clientX+10)+"px";tooltip.style.top=(e.clientY+10)+"px";tooltip.textContent=R[t].help;};item.onmouseleave=e=>{tooltip.style.display="none";};item.onclick=e=>{e.stopPropagation();parent?parent.c.push(nb(t)):root.push(nb(t));addMenu.style.display="none";init();};addMenu.append(item);}});
+ addMenu.style.left=x+"px";addMenu.style.top=y+"px";addMenu.style.display="block";
+}
+document.getElementById("rootAdd").onclick=e=>{e.stopPropagation();openAddMenu(e.clientX,e.clientY,null);};
+document.body.addEventListener("click",()=>{addMenu.style.display="none";tooltip.style.display="none";});
+addMenu.addEventListener("click",e=>e.stopPropagation());
+
+init();
+</script>
+</body>
+</html>

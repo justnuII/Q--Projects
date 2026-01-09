@@ -1,7 +1,7 @@
 import qsharp
 import os
 
-project_root = r'C:\Users\tim30\Desktop\quantum\Quant'
+project_root = os.path.dirname(os.path.abspath(__file__))
 os.chdir(project_root)
 
 qsharp.init(project_root='.', target_profile=qsharp.TargetProfile.Unrestricted)
