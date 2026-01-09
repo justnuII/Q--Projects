@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Python Q# Script Generator</title>
+<style>
+body {background:#001a00;color:#ccffcc;font-family:Inter,sans-serif;padding:20px;}
+input {background:#003300;border:1px solid #006600;color:#ccffcc;border-radius:6px;padding:6px;margin-bottom:6px;width:200px;}
+button {background:#00ff00;border:none;color:#000;padding:6px 12px;border-radius:6px;cursor:pointer;margin-right:6px;margin-top:4px;}
+button:hover {background:#66ff66;}
+pre {background:#002200;border:1px solid #006600;border-radius:10px;padding:12px;color:#99ff99;white-space:pre-wrap;}
+.param-row {margin-bottom:10px;border-bottom:1px solid #006600;padding-bottom:6px;position:relative;}
+label {display:block;margin-top:4px;}
+.tooltip {position:absolute;background:#004d00;border:1px solid #006600;padding:4px 8px;border-radius:6px;color:#99ff99;font-size:12px;display:none;z-index:1000;}
+.dup-btn {background:#009900;padding:2px 6px;font-size:12px;border-radius:4px;margin-left:4px;}
+.dup-btn:hover {background:#33ff33;}
+</style>
+</head>
+<body>
+<h2>Генератор Python Q# скриптов</h2>
+
+<div id="paramsContainer">
+  <div class="param-row">
+    <label>Namespace (ns):</label>
+    <input type="text" placeholder="ns" title="Пример: Pass">
+    <label>Operation (op):</label>
+    <input type="text" placeholder="op" title="Пример: GeneratePassword">
+    <label>Количество запусков (k):</label>
+    <input type="number" placeholder="1" value="1" min="1" title="Сколько раз выполнять">
+    <button class="dup-btn">Дублировать</button>
+  </div>
+</div>
+
+<button id="addParam">＋ Добавить ещё скрипт</button>
+<button id="genBtn">Сгенерировать код</button>
+<button id="downloadBtn">Скачать .py</button>
+
+<h3>Сгенерированный код:</h3>
+<pre id="code"></pre>
+<div id="tooltip" class="tooltip"></div>
+
+<script>
+const paramsContainer = document.getElementById("paramsContainer");
+const addParam = document.getElementById("addParam");
+const genBtn = document.getElementById("genBtn");
+const downloadBtn = document.getElementById("downloadBtn");
+const codeEl = document.getElementById("code");
+const tooltip = document.getElementById("tooltip");
+
+// Функция для создания блока параметров
+function createParamRow(ns='', op='', k=1) {
+  const div = document.createElement("div");
+  div.className = "param-row";
+  div.innerHTML = `
+    <label>Namespace (ns):</label>
+    <input type="text" placeholder="ns" value="${ns}" title="Пример: Pass">
+    <label>Operation (op):</label>
+    <input type="text" placeholder="op" value="${op}" title="Пример: GeneratePassword">
+    <label>Количество запусков (k):</label>
+    <input type="number" placeholder="1" value="${k}" min="1" title="Сколько раз выполнять">
+    <button class="dup-btn">Дублировать</button>
+  `;
+  // Дублирование блока
+  div.querySelector(".dup-btn").onclick = () => {
+    const inputs = div.querySelectorAll("input");
+    const nsVal = inputs[0].value;
+    const opVal = inputs[1].value;
+    const kVal = inputs[2].value;
+    paramsContainer.appendChild(createParamRow(nsVal, opVal, kVal));
+  };
+  return div;
+}
+
+// Добавление нового блока
+addParam.onclick = () => {
+  paramsContainer.appendChild(createParamRow());
+}
+
+// Генерация скрипта
+genBtn.onclick = () => {
+  const rows = paramsContainer.querySelectorAll(".param-row");
+  let scripts = [];
+
+  rows.forEach(row => {
+    const inputs = row.querySelectorAll("input");
+    const ns = inputs[0].value.trim() || "ns";
+    const op = inputs[1].value.trim() || "op";
+    let k = parseInt(inputs[2].value);
+    if(isNaN(k) || k < 1) k = 1;
+
+    const block = `
+for i in range(${k}):
+    result = qs.eval("${ns}.${op}()")
+    print("Результат вычислений:")
+    print(result)
+`;
+    scripts.push(block);
+  });
+
+  const finalScript = `
+import qsharp as qs
+import os
+
+project_root = os.path.dirname(os.path.abspath(__file__))
+os.chdir(project_root)
+
+qsharp.init(project_root='.', target_profile=qsharp.TargetProfile.Unrestricted)
+
+print("Проект сгенерирован встроенным генератором кода на питоне 🐝")
+
+${scripts.join("\n")}
+`;
+
+  codeEl.textContent = finalScript;
+}
+
+// Скачать .py
+downloadBtn.onclick = () => {
+  const blob = new Blob([codeEl.textContent], {type: "text/plain"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "generated_script.py";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Tooltip для подсказок
+paramsContainer.addEventListener("mouseover", e => {
+  if(e.target.tagName === "INPUT" && e.target.title){
+    tooltip.textContent = e.target.title;
+    tooltip.style.display = "block";
+    tooltip.style.left = (e.pageX + 10) + "px";
+    tooltip.style.top = (e.pageY + 10) + "px";
+  }
+})
+paramsContainer.addEventListener("mouseout", e => {
+  tooltip.style.display = "none";
+})
+</script>
+</body>
+</html>
